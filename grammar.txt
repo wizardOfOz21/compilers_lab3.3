@@ -30,7 +30,7 @@ field_list ::= fixed_part variant_part | variant_part
 fixed_part ::= record_section (; record_section?)*
 record_section ::= field_ident (, field_ident)* : type
 variant_part ::= 'CASE' tag_field : type_ident 'OF' variant (; variant)*
-variant ::= case_label_list : '(' (field_list ')' | case_label_list
+variant ::= case_label_list : '(' field_list ')'
 case_label_list ::= case_label (, case_label)*
 
 set_type ::= 'SET' 'OF' base_type
