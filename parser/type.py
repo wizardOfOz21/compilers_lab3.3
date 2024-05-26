@@ -4,6 +4,9 @@ import typing as t
 from parser.shared import UNSIGNED_NUMBER, IDENTIFIER, \
     make_keyword, make_nonterminals
 from parser.constant import NConstant, Constant
+import errors as er
+from parser.shared import getFirstWithCoords, getNextWithCoords
+
 
 @dataclass
 class RecordSection:
@@ -118,36 +121,105 @@ class StructuredType:
     packed: bool
     type: t.Union[ArrayType, RecordType, FileType, SetType]
 
+    def check(self, names):
+        pass
+
 
 @dataclass
 class PointerType:
     type: str
 
+    def check(self, names):
+        pass
+
 
 @dataclass
 class SubrangeType:
-    start: Constant
-    end: Constant
+    min: Constant
+    max: Constant
+    points_pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        min, max = attrs
+        cmin, cpoints, cmax = coords
+        return SubrangeType(min, max, cpoints.start)
+
+    def check(self, prog):
+        min_value = self.min.check(prog)
+        max_value = self.max.check(prog)
+
+        if min_value > max_value:
+            raise er.SubrangeWrongBorders(self.points_pos)
 
 
 @dataclass
 class ScalarType:
     types: list[str]
+    names_pos: list[pe.Position]
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        list, = attrs
+        return ScalarType(list[0], list[1])
+
+    def check(self, prog):
+        for idx, name in enumerate(self.types):
+            prog.check_global_scope_rule(name, self.names_pos[idx])
 
 
 @dataclass
 class SimpleType:
     val: t.Union[ScalarType, SubrangeType, str]
+    pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        attr, = attrs
+        cattr, = coords
+        return SimpleType(attr, cattr.start)
+
+    def check(self, prog):
+        if isinstance(self.val, str):
+            prog.check_defined_type_rule(self.val, self.pos)
+        else:
+            self.val.check(prog)
 
 
 @dataclass
 class Type:
     val: t.Union[SimpleType, PointerType, StructuredType]
 
+    def isSimple(self):
+        return isinstance(
+            self.val, SimpleType)
+
+    def isScalar(self):
+        return self.isSimple() and isinstance(self.val.val, ScalarType)
+
+    def toScalar(self):
+        return self.val.val
+
+    def check(self, prog):
+        self.val.check(prog)
+
+
 @dataclass
 class TypeDef:
     name: str
     type: Type
+    name_pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        name, type = attrs
+        cname, cequal, ctype = coords
+        return TypeDef(name, type, cname.start)
+
+    def check(self, prog):
+        self.type.check(prog)
+        prog.check_global_scope_rule(self.name, self.name_pos)
+        prog.types[self.name] = self.name_pos
 
 # Определение типа
 
@@ -155,24 +227,24 @@ NTypeBlock |= KW_TYPE, NTypeDefinitionList, ';'
 NTypeDefinitionList |= NTypeDefinitionList, ';', NTypeDefinition, \
     lambda l, v: l + [v]
 NTypeDefinitionList |= NTypeDefinition, lambda v: [v]
-NTypeDefinition |= IDENTIFIER, '=', NType, TypeDef
+NTypeDefinition |= IDENTIFIER, '=', NType, TypeDef.create
 NType |= NSimpleType, Type
 NType |= NPointerType, Type
 NType |= NStructuredType, Type
-NSimpleType |= NScalarType, SimpleType
-NSimpleType |= NSubrangeType, SimpleType
-NSimpleType |= IDENTIFIER, SimpleType
+NSimpleType |= NScalarType, SimpleType.create
+NSimpleType |= NSubrangeType, SimpleType.create
+NSimpleType |= IDENTIFIER, SimpleType.create
 
 NPointerType |= '^', IDENTIFIER, PointerType
 
-NScalarType |= '(', NIdentList, ')', ScalarType
-NIdentList |= NIdentList, ',', IDENTIFIER, lambda l, v: l + [v]
-NIdentList |= IDENTIFIER, lambda v: [v]
+NScalarType |= '(', NIdentList, ')', ScalarType.create
+NIdentList |= NIdentList, ',', IDENTIFIER, getNextWithCoords
+NIdentList |= IDENTIFIER, getFirstWithCoords
 
-NSubrangeType |= NConstant, '..', NConstant, SubrangeType
+NSubrangeType |= NConstant, '..', NConstant, SubrangeType.create
 
 NStructuredType |= KW_PACKED, NUnpackedStructuredType, \
-    lambda v: StructuredType(True,v)
+    lambda v: StructuredType(True, v)
 NStructuredType |= NUnpackedStructuredType, lambda v: StructuredType(False, v)
 NUnpackedStructuredType |= NArrayType
 NUnpackedStructuredType |= NRecordType
@@ -185,6 +257,5 @@ NIndexTypeList |= NSimpleType, lambda v: [v]
 
 NFileType |= KW_FILE, KW_OF, NType, FileType
 NSetType |= KW_SET, KW_OF, NSimpleType, SetType
-
 
 #######################

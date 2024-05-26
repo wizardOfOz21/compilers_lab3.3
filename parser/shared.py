@@ -8,7 +8,7 @@ def make_keyword(image):
 def make_nonterminals(str):
     return map(pe.NonTerminal, str.split())
 
-UNSIGNED_NUMBER = pe.Terminal('UNSIGNED_NUMBER', '[0-9]+(\\.[0-9]*)?(e[-+]?[0-9]+)?', float)
+UNSIGNED_NUMBER = pe.Terminal('UNSIGNED_NUMBER', '[0-9]+', int)
 IDENTIFIER = pe.Terminal('IDENTIFIER', '[A-Za-z][A-Za-z0-9]*', str.upper)
 
 NSign, A = \
@@ -17,3 +17,14 @@ NSign, A = \
 NSign                   |= '+', lambda: '+'
 NSign                   |= '-', lambda: '-'
     
+@pe.ExAction
+def getFirstWithCoords(attrs, coords, res_coord):
+    attr, = attrs
+    cattr, = coords
+    return ([attr], [cattr.start])
+
+@pe.ExAction
+def getNextWithCoords(attrs, coords, res_coord):
+    list, next = attrs
+    clist, ccomma, cnext = coords
+    return (list[0]+[next], list[1]+[cnext.start])

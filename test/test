@@ -1,8 +1,14 @@
-ConSt
-	MaxPoints = 100;
-    A = -1;
-    B = -C;
-    C = +10;
+Type
+	Coords = Record
+		x, y: INTEGER
+	End;
+Type
+    K = (P, Coor);
+    Po = K;
 Const
-    P = 15;
-    D = - 18;
+	Heigh = 1;
+	Width = 640;
+	Lines = Heigh;
+	Columns = 80;
+Type 
+    T = 1 .. Heigh;

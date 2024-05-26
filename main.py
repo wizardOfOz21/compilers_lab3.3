@@ -13,8 +13,10 @@ for filename in sys.argv[1:]:
     try:
         with open(filename) as f:
             tree = p.parse(f.read())
-            pprint(tree)
-            # tree.check()
-            print('Семантических ошибок не найдено')
+            # pprint(tree)
+            tree.check()
+            tree.print_consts()
+            print('Программа корректна')
+            
     except pe.Error as e:
         print(f'Ошибка {e.pos}: {e.message}')
