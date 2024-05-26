@@ -13,7 +13,7 @@ for filename in sys.argv[1:]:
     try:
         with open(filename) as f:
             tree = p.parse(f.read())
-            # pprint(tree)
+            pprint(tree)
             tree.check()
             tree.print_consts()
             print('Программа корректна')

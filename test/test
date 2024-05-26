@@ -1,16 +1,13 @@
 Type
-	Coords = Record
-		x, y: INTEGER
+    A = (C);
+    B = 1..2;
+	TextScreen = Record
+        a: A;
+        case b : B of 
+            c, 1, 2, 3: (
+                name: A
+            );
+            5: (
+                b: A
+            )
 	End;
-Type
-    K = (P, Coor);
-    Po = K;
-Const
-	Heigh = 1;
-	Width = 640;
-	Lines = Heigh;
-	Columns = 80;
-Type 
-    T = 1 .. Heigh;
-    L = Set of f;
-    L1 = file of f;

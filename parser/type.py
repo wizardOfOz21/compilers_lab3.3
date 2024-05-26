@@ -13,11 +13,39 @@ class RecordSection:
     ident_list: list[str]
     type: 'Type'
 
+    ident_pos: list[pe.Position]
+    type_pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        list, type = attrs
+        clist, ccolon, ctype = coords
+        return RecordSection(list[0], type, list[1], ctype.start)
+
+    def check(self, prog, rec):
+        for idx, ident in enumerate(self.ident_list):
+            rec.check_global_scope_rule(ident, self.ident_pos[idx])
+        self.type.check(prog)
+
 
 @dataclass
 class Variant:
-    case_label_list: list[t.Union[float, str]]
+    case_label_list: list[t.Union[int, str]]
     field_list: 'FieldList'  # forward-ref для типов 😎
+    
+    case_label_list_pos: list[pe.Position]
+    
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        case_label_list, field_list = attrs
+        ccaselist, crparen, ccolon, cfieldlist, clparen = coords
+        return Variant(case_label_list[0], field_list, case_label_list[1])
+    
+    def check(self, prog, rec):
+        for idx, label in enumerate(self.case_label_list):
+            if isinstance(label, str):
+                prog.check_defined_constant_rule(label, self.case_label_list_pos[idx])
+        self.field_list.check(prog, rec)
 
 
 @dataclass
@@ -26,19 +54,50 @@ class VariantPart:
     tag_type: str
     variants: list[Variant]
 
+    tag_pos: pe.Position
+    tag_type_pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        tag, tag_type, variants = attrs
+        ccase, ctag, ccolon, ctype, cof, cvariants = coords
+        return VariantPart(tag, tag_type, variants, ctag.start, ctype.start)
+
+    def check(self, prog, rec):
+        rec.check_global_scope_rule(self.tag, self.tag_pos)
+        prog.check_defined_type_rule(self.tag_type, self.tag_type_pos)
+        for variant in self.variants:
+            variant.check(prog, rec)
+
 
 @dataclass
 class FieldList:
     fixed_part: t.Union[None, list[RecordSection]]
     variant_part: t.Union[None, VariantPart]
 
+    def check(self, prog, rec):
+        if self.fixed_part != None:
+            for sect in self.fixed_part:
+                sect.check(prog, rec)
+        if self.variant_part != None:
+            self.variant_part.check(prog, rec)
+
 
 @dataclass
 class RecordType:
     fields: FieldList
 
+    names = {}
+
+    def check_global_scope_rule(self, name, pos):
+        if name in self.names:
+            prev_def_pos = self.names[name]
+            raise er.RepeatedRecordField(pos, name, prev_def_pos)
+        else:
+            self.names[name] = pos
+
     def check(self, prog):
-        pass
+        self.fields.check(prog, self)
 
 
 KW_RECORD = make_keyword('record')
@@ -82,18 +141,18 @@ NFieldList |= NVariantPart, lambda v: FieldList(None, v)
 
 NFixedPart |= NFixedPart, ';', NRecordSection, lambda l, v: l + [v]
 NFixedPart |= NRecordSection, lambda v: [v]
-NRecordSection |= NFieldIdentList, ':', NType, RecordSection
-NFieldIdentList |= NFieldIdentList, ',', IDENTIFIER, lambda l, v: l + [v]
-NFieldIdentList |= IDENTIFIER, lambda v: [v]
+NRecordSection |= NFieldIdentList, ':', NType, RecordSection.create
+NFieldIdentList |= NFieldIdentList, ',', IDENTIFIER, getNextWithCoords
+NFieldIdentList |= IDENTIFIER, getFirstWithCoords
 
 NVariantPart |= KW_CASE, IDENTIFIER, ':', IDENTIFIER, \
-    KW_OF, NVariantList, VariantPart
+    KW_OF, NVariantList, VariantPart.create
 NVariantList |= NVariantList, ';', NVariant, lambda l, v: l + [v]
 NVariantList |= NVariant, lambda v: [v]
 
-NVariant |= NCaseLabelList, ':', '(', NFieldList, ')', Variant
-NCaseLabelList |= NCaseLabelList, ',', NCaseLabel, lambda l, v: l + [v]
-NCaseLabelList |= NCaseLabel, lambda v: [v]
+NVariant |= NCaseLabelList, ':', '(', NFieldList, ')', Variant.create
+NCaseLabelList |= NCaseLabelList, ',', NCaseLabel, getNextWithCoords
+NCaseLabelList |= NCaseLabel, getFirstWithCoords
 NCaseLabel |= UNSIGNED_NUMBER
 NCaseLabel |= KW_NIL
 NCaseLabel |= IDENTIFIER
@@ -112,7 +171,7 @@ class FileType:
     def create(attrs, coords, res_coord):
         type, = attrs
         cfile, cof, ctype = coords
-        return FileType(type, ctype)
+        return FileType(type, ctype.start)
 
     def check(self, prog):
         self.base_type.check(prog)
@@ -127,7 +186,7 @@ class SetType:
     def create(attrs, coords, res_coord):
         type, = attrs
         cset, cof, ctype = coords
-        return SetType(type, ctype)
+        return SetType(type, ctype.start)
 
     def check(self, prog):
         self.base_type.check(prog)
@@ -162,7 +221,7 @@ class PointerType:
     def create(attrs, coords, res_coord):
         type, = attrs
         ccaret, ctype = coords
-        return PointerType(type, ctype)
+        return PointerType(type, ctype.start)
 
     def check(self, prog):
         prog.check_defined_type_rule(self.type, self.pos)
@@ -201,6 +260,7 @@ class ScalarType:
     def check(self, prog):
         for idx, name in enumerate(self.types):
             prog.check_global_scope_rule(name, self.names_pos[idx])
+            prog.consts[name] = idx
 
 
 @dataclass

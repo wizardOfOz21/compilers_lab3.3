@@ -22,6 +22,16 @@ class RepeatedVariable(SemanticError):
     @property
     def message(self):
         return f'Имя \'{self.varname}\' уже было объявлено ранее: {self.prev_def}'
+    
+class RepeatedRecordField(SemanticError):
+    def __init__(self, pos, fieldname, prev_def_pos):
+        self.pos = pos
+        self.fieldname = fieldname
+        self.prev_def = prev_def_pos
+
+    @property
+    def message(self):
+        return f'Поле \'{self.fieldname}\' уже было объявлено ранее в записи: {self.prev_def}'
 
 class UnknownType(SemanticError):
     def __init__(self, pos, typename):
