@@ -33,6 +33,14 @@ class FieldList:
     variant_part: t.Union[None, VariantPart]
 
 
+@dataclass
+class RecordType:
+    fields: FieldList
+
+    def check(self, prog):
+        pass
+
+
 KW_RECORD = make_keyword('record')
 KW_NIL = make_keyword('nil')
 KW_CASE = make_keyword('case')
@@ -67,7 +75,7 @@ NVariant, NFieldList, NVariantList, NFieldIdentList = make_nonterminals(
 NRecordSection, NFixedPart, NVariantPart, NRecordType = make_nonterminals(
     'RecordSection FixedPart VariantPart, RecordType')
 
-NRecordType |= KW_RECORD, NFieldList, KW_END
+NRecordType |= KW_RECORD, NFieldList, KW_END, RecordType
 NFieldList |= NFixedPart, lambda v: FieldList(v, None)
 NFieldList |= NFixedPart, ';', NVariantPart, FieldList
 NFieldList |= NVariantPart, lambda v: FieldList(None, v)
@@ -98,11 +106,31 @@ NCaseLabel |= IDENTIFIER
 @dataclass
 class FileType:
     base_type: 'Type'
+    pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        type, = attrs
+        cfile, cof, ctype = coords
+        return FileType(type, ctype)
+
+    def check(self, prog):
+        self.base_type.check(prog)
 
 
 @dataclass
 class SetType:
     base_type: 'SimpleType'
+    pos: pe.Position
+
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        type, = attrs
+        cset, cof, ctype = coords
+        return SetType(type, ctype)
+
+    def check(self, prog):
+        self.base_type.check(prog)
 
 
 @dataclass
@@ -110,10 +138,8 @@ class ArrayType:
     element_types: list['SimpleType']
     component_type: 'Type'
 
-
-@dataclass
-class RecordType:
-    fields: FieldList
+    def check(self, prog):
+        pass
 
 
 @dataclass
@@ -121,16 +147,23 @@ class StructuredType:
     packed: bool
     type: t.Union[ArrayType, RecordType, FileType, SetType]
 
-    def check(self, names):
-        pass
+    def check(self, prog):
+        self.type.check(prog)
 
 
 @dataclass
 class PointerType:
     type: str
+    pos: pe.Position
 
-    def check(self, names):
-        pass
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        type, = attrs
+        ccaret, ctype = coords
+        return PointerType(type, ctype)
+
+    def check(self, prog):
+        prog.check_defined_type_rule(self.type, self.pos)
 
 
 @dataclass
@@ -223,6 +256,7 @@ class TypeDef:
 
 # Определение типа
 
+
 NTypeBlock |= KW_TYPE, NTypeDefinitionList, ';'
 NTypeDefinitionList |= NTypeDefinitionList, ';', NTypeDefinition, \
     lambda l, v: l + [v]
@@ -235,7 +269,7 @@ NSimpleType |= NScalarType, SimpleType.create
 NSimpleType |= NSubrangeType, SimpleType.create
 NSimpleType |= IDENTIFIER, SimpleType.create
 
-NPointerType |= '^', IDENTIFIER, PointerType
+NPointerType |= '^', IDENTIFIER, PointerType.create
 
 NScalarType |= '(', NIdentList, ')', ScalarType.create
 NIdentList |= NIdentList, ',', IDENTIFIER, getNextWithCoords
@@ -255,7 +289,7 @@ NArrayType |= KW_ARRAY, '[', NIndexTypeList, ']', KW_OF, NType, ArrayType
 NIndexTypeList |= NIndexTypeList, ',', NSimpleType, lambda l, v: l + [v]
 NIndexTypeList |= NSimpleType, lambda v: [v]
 
-NFileType |= KW_FILE, KW_OF, NType, FileType
-NSetType |= KW_SET, KW_OF, NSimpleType, SetType
+NFileType |= KW_FILE, KW_OF, NType, FileType.create
+NSetType |= KW_SET, KW_OF, NSimpleType, SetType.create
 
 #######################

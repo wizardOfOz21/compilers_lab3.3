@@ -12,3 +12,5 @@ Const
 	Columns = 80;
 Type 
     T = 1 .. Heigh;
+    L = Set of f;
+    L1 = file of f;
