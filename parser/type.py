@@ -139,7 +139,9 @@ class ArrayType:
     component_type: 'Type'
 
     def check(self, prog):
-        pass
+        for type in self.element_types:
+            type.check(prog)
+        self.component_type.check(prog)
 
 
 @dataclass
