@@ -14,5 +14,5 @@ NProgram, NBlocks, NBlock = \
 NProgram  |= NBlocks, Program
 NBlocks   |= NBlocks, NBlock, lambda l, v: l + v 
 NBlocks   |= NBlock, lambda v: v
-NBlock  |= NTypeBlock
+NBlock    |= NTypeBlock
 NBlock    |= NConstantBlock
