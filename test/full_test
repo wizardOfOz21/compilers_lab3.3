@@ -1,0 +1,46 @@
+Type
+	Coords = Record
+		x, y: INTEGER
+	End;
+Const
+	MaxPoints = 100;
+Type
+	CoordsVector = Array [1 .. MaxPoints] Of Coords;
+Const
+	Heigh = 480;
+	Width = 640;
+	Lines = 24;
+	Columns = 80;
+Type
+	BaseColor = (red, green, blue, highlited);
+	Color = Set Of BaseColor;
+	GraphicScreen = Array [1 .. Heigh] Of Array [1 .. Width] Of Color;
+	TextScreen = Array [1 .. Lines] Of Array [1 .. Columns] Of Record
+		Symbol: CHAR;
+		SymColor: Color;
+		BackColor: Color
+	End;
+Type
+	Domain = (Ident, IntNumber, RealNumber);
+	Token = Record
+		fragment: Record
+			start, following: Record
+				row, col: INTEGER
+			End
+		End;
+		Case tokType : Domain Of
+			Ident: (
+				name: Array [1 .. 32] Of CHAR
+			);
+			IntNumber: (
+				intval: INTEGER
+			);
+			RealNumber: (
+				realval: REAL
+			)
+	End;
+	Year = 1900 .. 2050;
+	List = Record
+		value: Token;
+		next: ^List
+	End;

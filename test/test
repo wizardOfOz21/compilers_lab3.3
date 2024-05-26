@@ -1,0 +1,8 @@
+ConSt
+	MaxPoints = 100;
+    A = -1;
+    B = -C;
+    C = +10;
+Const
+    P = 15;
+    D = - 18;

@@ -1,0 +1,46 @@
+program ::= (type_block | constant_block)*
+type_block ::= 'TYPE' type_definition (; type_definition?)*
+constant_block ::= 'CONST' constant_definition (; constant_definition?)*
+
+// Определение константы
+
+constant_definition ::= IDENT = constant
+unsigned_constant ::= UNSIGNED_NUMBER | STRING | 'NIL' | constant_ident
+constant ::= sign? (UNSIGNED_NUMBER | constant_ident) | STRING
+constant_ident ::= IDENT
+sign ::= + | -
+
+// Определение типа
+
+type_definition ::= IDENT = type
+type ::= simple_type | pointer_type | structured_type
+simple_type ::= scalar_type | subrange_type | type_ident
+// subrange_type и type_ident оба могут начинаются с IDENT, то есть грамматика – LL(2)
+scalar_type ::= '(' IDENT (, IDENT)* ')'
+subrange_type ::= constant .. constant
+structured_type ::= 'PACKED'? unpacked_structured_type
+unpacked_structured_type = array_type | record_type | file_type | set_type
+
+array_type ::= 'ARRAY' [ index_type (, index_type)* ] 'OF' component_type
+index_type ::= simple_type
+component_type ::= type
+
+record_type ::= 'RECORD' field_list 'END'
+field_list ::= fixed_part variant_part | variant_part
+fixed_part ::= record_section (; record_section?)*
+record_section ::= field_ident (, field_ident)* : type
+variant_part ::= 'CASE' tag_field : type_ident 'OF' variant (; variant)*
+variant ::= case_label_list : '(' (field_list ')' | case_label_list
+case_label_list ::= case_label (, case_label)*
+
+set_type ::= 'SET' 'OF' base_type
+base_type ::= simple_type
+
+file_type ::= 'FILE' 'OF' type
+
+pointer_type ::= ^type_ident
+
+case_label ::= unsigned_constant
+tag_field ::= IDENT
+field_ident ::= IDENT
+type_ident ::= IDENT
