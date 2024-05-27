@@ -65,3 +65,12 @@ class SignedString(SemanticError):
     @property
     def message(self):
         return f'Знак перед константой со значением строки: {self.name}'
+
+class NotSimpleType(SemanticError):
+    def __init__(self, pos, typename):
+        self.pos = pos
+        self.typename = typename
+
+    @property
+    def message(self):
+        return f'Не простой тип: {self.typename}'

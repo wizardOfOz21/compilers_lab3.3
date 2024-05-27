@@ -11,5 +11,9 @@ Const
 Type
     T = (p,sv,l);
     Sr = 1 .. 2;
+    Coords = Record
+		x, y: T
+	End;
     Tp = T;
+    SS = Set of Coords;
     

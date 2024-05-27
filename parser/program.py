@@ -12,6 +12,12 @@ class Program:
     names = {}
     consts = {}
     types = {}
+    range_types = {}
+    
+    def check_range_type_rule(self, typename, pos):
+        if typename in self.range_types:
+            return self.range_types[typename]
+        raise er.NotSimpleType(pos, typename)
     
     def check_defined_constant_rule(self, constname, pos):
         if constname in self.consts:
@@ -31,14 +37,39 @@ class Program:
             self.names[name] = pos
             
     def print_consts(self):
-        print('Consts:')
+        print('Consts:\n')
         for const in self.consts:
             print(f'{const} = {self.consts[const]};')
-        print('Types:')
+        print('\n')
+
+        print('Types:\n')
         for type in self.types:
             print(f'{type} = {self.types[type]};')
+        print('\n')
+        
+        print('Range types:\n')
+        for type in self.range_types:
+            print(f'{type} = {self.range_types[type]};')
+        print('\n')
+        
+        print(self.range_types)
+
+    def add_defaults(self):
+        self.names['INTEGER'] = -1
+        self.types['INTEGER'] = 2
+        self.range_types['INTEGER'] = 65536
+        self.names['REAL'] = -1
+        self.types['REAL'] = 4
+        
+        self.names['CHAR'] = -1
+        self.types['CHAR'] = 1
+        self.range_types['CHAR'] = 256
+        
 
     def check(self):
+        
+        self.add_defaults()
+        
         for _def in self.defs:
             _def.check(self)
 

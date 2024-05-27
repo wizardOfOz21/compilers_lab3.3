@@ -6,6 +6,7 @@ from parser.shared import INT, IDENTIFIER, \
 from parser.constant import NConstant, Constant
 import errors as er
 from parser.shared import getFirstWithCoords, getNextWithCoords
+import math
 
 
 @dataclass
@@ -47,11 +48,9 @@ class Variant:
             if isinstance(label, str):
                 prog.check_defined_constant_rule(
                     label, self.case_label_list_pos[idx])
-                
+
         field_list_volume = self.field_list.check(prog, rec)
         return len(self.case_label_list) * field_list_volume
-        
-        
 
 
 @dataclass
@@ -72,15 +71,15 @@ class VariantPart:
     def check(self, prog, rec):
         rec.check_global_scope_rule(self.tag, self.tag_pos)
         prog.check_defined_type_rule(self.tag_type, self.tag_type_pos)
-        
+
         tag_type_volume = prog.types[self.tag_type]
-        
+
         max_variant_volume = 0
         for variant in self.variants:
-            max_variant_volume = max(max_variant_volume, variant.check(prog, rec))
-        
+            max_variant_volume = max(
+                max_variant_volume, variant.check(prog, rec))
+
         return tag_type_volume + max_variant_volume
-            
 
 
 @dataclass
@@ -123,8 +122,8 @@ KW_END = make_keyword('end')
 KW_TYPE = make_keyword('type')
 KW_PACKED = make_keyword('packed')
 KW_ARRAY = make_keyword('array')
-KW_FILE = make_keyword('set')
-KW_SET = make_keyword('file')
+KW_FILE = make_keyword('file')
+KW_SET = make_keyword('set')
 
 NTypeBlock, NTypeDefinitionList, NTypeDefinition, NType = make_nonterminals(
     'TypeBlock TypeDefinitionList TypeDefinition Type'
@@ -190,7 +189,7 @@ class FileType:
 
     def check(self, prog):
         self.base_type.check(prog)
-        return 16 #?
+        return 16  # ?
 
 
 @dataclass
@@ -206,19 +205,28 @@ class SetType:
 
     def check(self, prog):
         self.base_type.check(prog)
-        return 32
+        range = self.base_type.range(prog)
+        return math.ceil(range/8)
 
 
 @dataclass
 class ArrayType:
-    element_types: list['SimpleType']
+    index_types: list['SimpleType']
     component_type: 'Type'
 
     def check(self, prog):
-        for type in self.element_types:
+        for type in self.index_types:
             type.check(prog)
         self.component_type.check(prog)
-        return 4 # допустим, это указатель
+        
+        element_type_volume = self.component_type.check(prog)
+        volume = element_type_volume
+        
+        for idx_type in self.index_types:
+            volume *= idx_type.range(prog)
+        
+        return volume
+            
 
 
 @dataclass
@@ -258,6 +266,12 @@ class SubrangeType:
         cmin, cpoints, cmax = coords
         return SubrangeType(min, max, cpoints.start)
 
+    def range(self, prog):
+        min_value = self.min.check(prog)
+        max_value = self.max.check(prog)
+
+        return max_value - min_value + 1
+
     def check(self, prog):
         min_value = self.min.check(prog)
         max_value = self.max.check(prog)
@@ -280,6 +294,9 @@ class ScalarType:
         list, = attrs
         return ScalarType(list[0], list[1])
 
+    def range(self, prog):
+        return len(self.types)
+
     def check(self, prog):
         for idx, name in enumerate(self.types):
             prog.check_global_scope_rule(name, self.names_pos[idx])
@@ -298,12 +315,31 @@ class SimpleType:
         cattr, = coords
         return SimpleType(attr, cattr.start)
 
+    def range(self, prog):
+        if isinstance(self.val, str):
+            return prog.check_range_type_rule(self.val, self.pos)
+        return self.val.range(prog)
+    
     def check(self, prog):
         if isinstance(self.val, str):
             prog.check_defined_type_rule(self.val, self.pos)
             return prog.types[self.val]
         else:
             return self.val.check(prog)
+        
+    def is_ref(self):
+        return isinstance(self.val, str)
+    
+    def is_range(self, prog):
+        if self.is_ref():
+            return self.val in prog.range_types
+        return True
+        
+    def is_scalar(self):
+        return isinstance(self.val, ScalarType)
+    
+    def is_subrange(self):
+        return isinstance(self.val, SubrangeType)
 
 
 @dataclass
@@ -322,6 +358,9 @@ class Type:
 
     def check(self, prog):
         return self.val.check(prog)
+    
+    def is_simple(self):
+        return isinstance(self.val, SimpleType)
 
 
 @dataclass
@@ -340,6 +379,8 @@ class TypeDef:
         volume = self.type.check(prog)
         prog.check_global_scope_rule(self.name, self.name_pos)
         prog.types[self.name] = volume
+        if self.type.is_simple() and self.type.val.is_range(prog):
+            prog.range_types[self.name] = self.type.val.range(prog)
 
 # Определение типа
 

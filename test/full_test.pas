@@ -6,6 +6,7 @@ Type
 	Coords = Record
 		x, y: INTEGER
 	End;
+    NLIST = LIST;
 Const
 	MaxPoints = 100;
 Type
@@ -17,7 +18,7 @@ Const
 	Columns = 80;
 Type
 	BaseColor = (red, green, blue, highlited);
-	Color = Set Of BaseColor;
+	Color = Set Of BaseColor; { 4 bits = 1 byte }
 	GraphicScreen = Array [1 .. Heigh] Of Array [1 .. Width] Of Color;
 	TextScreen = Array [1 .. Lines] Of Array [1 .. Columns] Of Record
 		Symbol: CHAR;
@@ -48,3 +49,5 @@ Type
 		value: Token;
 		next: ^List
 	End;
+    YearSet = set of Year; { 151 bit - 19 bytes}
+    AllInts = set of INTEGER; { 8 KiB }
