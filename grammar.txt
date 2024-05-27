@@ -1,21 +1,32 @@
+## Лексические домены
+
+INT = [0-9]+
+REAL = [0-9]+(\\.[0-9]*)?(e[-+]?[0-9]+)?
+IDENTIFIER = [A-Za-z][A-Za-z0-9]*
+STRING = \'.*\'
+
+## Cинтаксис
+
 program ::= (type_block | constant_block)*
 type_block ::= 'TYPE' type_definition (; type_definition?)*
 constant_block ::= 'CONST' constant_definition (; constant_definition?)*
 
-// Определение константы
+### Определение константы
 
 constant_definition ::= IDENT = constant
-unsigned_constant ::= UNSIGNED_NUMBER | STRING | 'NIL' | constant_ident
-constant ::= sign? (UNSIGNED_NUMBER | constant_ident) | STRING
+unsigned_constant ::= number | STRING | 'NIL' | constant_ident
+constant ::= sign? (number | constant_ident) | STRING
 constant_ident ::= IDENT
+number ::= INT | REAL
 sign ::= + | -
 
-// Определение типа
+### Определение типа
 
 type_definition ::= IDENT = type
 type ::= simple_type | pointer_type | structured_type
  
-// subrange_type и type_ident оба могут начинаются с IDENT, то есть грамматика – LL(2)
+``` subrange_type и type_ident оба могут начинаются с IDENT, то есть грамматика – LL(2) ```
+
 scalar_type ::= '(' IDENT (, IDENT)* ')'
 subrange_type ::= constant .. constant
 structured_type ::= 'PACKED'? unpacked_structured_type
