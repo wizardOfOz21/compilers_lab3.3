@@ -3,11 +3,17 @@ import parser_edsl as pe
 class SemanticError(pe.Error):
     pass
 
+class SubrangeBordersTypeMismatch(SemanticError):
+    def __init__(self, pos):
+        self.pos = pos
+
+    @property
+    def message(self):
+        return f'Типы границ диапазона не целые'
+    
 class SubrangeWrongBorders(SemanticError):
     def __init__(self, pos):
         self.pos = pos
-        self.min = min
-        self.max = max
 
     @property
     def message(self):
@@ -50,3 +56,12 @@ class UnknownConstant(SemanticError):
     @property
     def message(self):
         return f'Константа \'{self.constname}\' ранее не была объявлена'
+
+class SignedString(SemanticError):
+    def __init__(self, sign_pos, name):
+        self.pos = sign_pos
+        self.name = name
+
+    @property
+    def message(self):
+        return f'Знак перед константой со значением строки: {self.name}'
