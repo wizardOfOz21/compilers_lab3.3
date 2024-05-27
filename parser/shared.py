@@ -8,8 +8,10 @@ def make_keyword(image):
 def make_nonterminals(str):
     return map(pe.NonTerminal, str.split())
 
-UNSIGNED_NUMBER = pe.Terminal('UNSIGNED_NUMBER', '[0-9]+', int)
+INT = pe.Terminal('INT', '[0-9]+', int, priority=7)
+REAL = pe.Terminal('REAL', '[0-9]+(\\.[0-9]*)?(e[-+]?[0-9]+)?', float)
 IDENTIFIER = pe.Terminal('IDENTIFIER', '[A-Za-z][A-Za-z0-9]*', str.upper)
+STRING = pe.Terminal('STRING', '\'.*\'', str)
 
 NSign, A = \
     map(pe.NonTerminal, 'Sign A'.split())

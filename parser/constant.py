@@ -1,36 +1,67 @@
+from enum import Enum
 from dataclasses import dataclass
 import parser_edsl as pe
+import errors as er
 import typing as t
-from parser.shared import NSign, UNSIGNED_NUMBER, \
+from parser.shared import NSign, INT, REAL, STRING, \
     IDENTIFIER, make_keyword, make_nonterminals
+@dataclass
+class Ref:
+    val: str
+    pos: pe.Position
+    
+    @pe.ExAction
+    def create(attrs, coords, res_coord):
+        val, = attrs
+        cval, = coords
+        return Ref(val, cval)
+
+    def check(self, prog):
+        return prog.check_defined_constant_rule(self.val, self.pos)
+
+@dataclass
+class RefConstant:
+    sign: t.Literal[1, -1, None]
+    ref: 'Ref'
+
+    sign_pos: pe.Position
+
+    def check(self, prog):
+        ref_val = self.ref.check(prog)
+        if isinstance(ref_val, str):
+            if self.sign != None:
+                raise er.SignedString(self.sign_pos, self.ref.val)
+            return self.ref.check(prog)
+        
+        return (-1 if self.sign == '-' else 1) * self.ref.check(prog)
 
 @dataclass
 class Constant:
-    sign: t.Union[str, None]
-    unsigned_constant: t.Union[str, float]
-    unsigned_constant_pos: pe.Position
-
+    val: t.Union[float, int, str, RefConstant]
+    
     @pe.ExAction
-    def create_unsigned(attrs, coords, res_coord):
-        value, = attrs
-        cvalue, = coords
-        return Constant(None, value, cvalue.start)
+    def create_signed(attrs, coords, res_coord):
+        sign, arg = attrs
+        csign, carg = coords
+        if sign != None:
+            sign = -1 if sign == '-' else 1
 
-    @pe.ExAction
-    def create(attrs, coords, res_coord):
-        sign, value = attrs
-        csign, cvalue = coords
-        return Constant(sign, value, cvalue.start)
-
+        if isinstance(arg, Ref):
+            return  Constant(RefConstant(sign, arg, csign))
+        
+        return Constant((-1 if sign == '-' else 1) * arg)
+    
+    def create_unsigned(arg):
+        if isinstance(arg, Ref):
+            return Constant(RefConstant(None, arg, None))
+        
+        return Constant(arg)
+    
     def check(self, prog):
-        sign_mul = +1 if self.sign != '-' else -1
-
-        if isinstance(self.unsigned_constant, str):
-            return sign_mul * prog.check_defined_constant_rule(
-                self.unsigned_constant, self.unsigned_constant_pos)
-
-        return sign_mul * self.unsigned_constant
-
+        if isinstance(self.val, RefConstant):
+            return self.val.check(prog)
+        return self.val
+    
 
 @dataclass
 class ConstDef:
@@ -66,9 +97,12 @@ NConstantDefinitionList |= NConstantDefinitionList, ';', NConstantDefinition, \
     lambda l, v: l + [v]
 NConstantDefinitionList |= NConstantDefinition, lambda v: [v]
 NConstantDefinition |= IDENTIFIER, '=', NConstant, ConstDef.create
-NConstant |= NSign, NUnsignedConstantNumber, Constant.create
+
+NConstant |= NSign, NUnsignedConstantNumber, Constant.create_signed
 NConstant |= NUnsignedConstantNumber, Constant.create_unsigned
-NUnsignedConstantNumber |= UNSIGNED_NUMBER
-NUnsignedConstantNumber |= IDENTIFIER
+NConstant |= STRING, Constant
+NUnsignedConstantNumber |= REAL
+NUnsignedConstantNumber |= INT
+NUnsignedConstantNumber |= IDENTIFIER, Ref.create
 
 #######################

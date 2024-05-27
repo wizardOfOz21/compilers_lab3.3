@@ -31,8 +31,12 @@ class Program:
             self.names[name] = pos
             
     def print_consts(self):
+        print('Consts:')
         for const in self.consts:
             print(f'{const} = {self.consts[const]};')
+        print('Types:')
+        for type in self.types:
+            print(f'{type} = {self.types[type]};')
 
     def check(self):
         for _def in self.defs:
