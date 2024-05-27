@@ -1,4 +1,8 @@
 Type
+    INTEGER = 1 .. 2;
+    CHAR = 2 .. 5;
+    REAL = 8 .. 12;
+    LIST = (a,v,b);
 	Coords = Record
 		x, y: INTEGER
 	End;
@@ -40,7 +44,7 @@ Type
 			)
 	End;
 	Year = 1900 .. 2050;
-	List = Record
+	List1 = Record
 		value: Token;
 		next: ^List
 	End;

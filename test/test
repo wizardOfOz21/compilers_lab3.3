@@ -1,13 +1,16 @@
+Const d = 1.2;
 Type
+    real = 1 .. 5;
     A = (C);
-    B = 1..2;
+    B = 1 .. 2;
+    Arr = array [1 .. 2] of real;
 	TextScreen = Record
-        a: A;
+        a, l: A;
         case b : B of 
             c, 1, 2, 3: (
                 name: A
             );
-            5: (
-                b: A
+            c, 1, 2, 3, 5: (
+                name1: A
             )
 	End;
